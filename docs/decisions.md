@@ -150,3 +150,47 @@ overhead for two projects).
 becomes the source of truth for decisions and product vision; Project knowledge files
 are copies. Vertical slices (API, contract and UI) are implemented and reviewed as a
 single change.
+
+## 009 — Persistence: Spring Data JPA (Hibernate)
+**Date:** 2026-09-27
+**Status:** Accepted
+
+**Decision:** Spring Data JPA with Hibernate for persistence. Song content (decision 003
+model) is stored as JSONB, mapped with `@JdbcTypeCode(SqlTypes.JSON)`. Catalogue search
+(unaccent, pg_trgm) uses native queries.
+
+**Alternatives considered:** JdbcClient (explicit SQL and full PostgreSQL control, but
+more mapping code); Spring Data JDBC (aggregate-oriented, no lazy loading, but custom
+JSONB converters).
+
+**Consequences:** `spring.jpa.open-in-view` is disabled. JPA entities live only in the
+persistence adapter (decision 010). Tests for key use cases assert the number of SQL
+statements executed, to catch N+1 problems that would not be visible in a code review.
+
+## 010 — Architecture: strict Clean Architecture (ports and adapters)
+**Date:** 2026-09-27
+**Status:** Accepted
+
+**Decision:** The backend applies Clean Architecture uniformly, implemented as ports and
+adapters and organised by feature (e.g. `song/`), each with `domain`, `application`
+(`port/in`, `port/out`, `service`) and `adapter` (`in/web`, `in/seed`,
+`out/persistence`) packages. Strict variant: the application layer has no Spring
+dependencies; use cases are plain Java classes wired as beans in `config/`, and
+transactions are handled outside them (e.g. a TransactionTemplate-based decorator).
+
+**Alternatives considered:** pragmatic Clean Architecture (pure domain core, ports only
+where there are rules, direct read paths; less ceremony); Spring annotations allowed in
+the application layer (simpler, but relaxes the dependency rule); traditional layers
+(controller/service/repository).
+
+**Motivation:** learning goal: apply Clean Architecture rigorously and observe its real
+costs, rather than choosing the lowest-ceremony option.
+
+**Consequences:** Separate models per layer (domain, JPA entities, web DTOs) with
+explicit mappers. ChordPro parsing is an inbound adapter; chord semantics (chord-name
+parsing, key-relative degrees) are domain. Dependency rules are enforced by ArchUnit
+tests in the build: `domain` depends only on `java.*`; `application` only on `domain`;
+adapters do not depend on each other; `jakarta.persistence` appears only in the
+persistence adapter; controllers depend only on `port.in`. To be revisited at the end
+of Phase 1, recording the costs observed and whether the pragmatic variant would fit
+better.
