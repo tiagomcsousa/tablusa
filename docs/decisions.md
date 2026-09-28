@@ -169,7 +169,7 @@ statements executed, to catch N+1 problems that would not be visible in a code r
 
 ## 010 — Architecture: strict Clean Architecture (ports and adapters)
 **Date:** 2026-09-27
-**Status:** Accepted
+**Status:** Accepted (amended by 011 and 012)
 
 **Decision:** The backend applies Clean Architecture uniformly, implemented as ports and
 adapters and organised by feature (e.g. `song/`), each with `domain`, `application`
@@ -186,11 +186,54 @@ the application layer (simpler, but relaxes the dependency rule); traditional la
 **Motivation:** learning goal: apply Clean Architecture rigorously and observe its real
 costs, rather than choosing the lowest-ceremony option.
 
-**Consequences:** Separate models per layer (domain, JPA entities, web DTOs) with
-explicit mappers. ChordPro parsing is an inbound adapter; chord semantics (chord-name
-parsing, key-relative degrees) are domain. Dependency rules are enforced by ArchUnit
-tests in the build: `domain` depends only on `java.*`; `application` only on `domain`;
-adapters do not depend on each other; `jakarta.persistence` appears only in the
-persistence adapter; controllers depend only on `port.in`. To be revisited at the end
-of Phase 1, recording the costs observed and whether the pragmatic variant would fit
-better.
+**Consequences:** Separate models per layer (domain, `port.in` commands and results,
+JPA entities, web DTOs) with explicit mappers (see 011). ChordPro parsing is an inbound
+adapter; chord semantics (chord-name parsing, key-relative degrees) are domain.
+Dependency rules are enforced by ArchUnit tests in the build: `domain` depends only on
+`java.*` and `org.jspecify.annotations` (see 012); `application` only on `domain`,
+`java.*` and `org.jspecify.annotations`; adapters do not depend on each other;
+`jakarta.persistence` appears only in the persistence adapter; controllers depend only
+on `port.in`. To be revisited at the end of Phase 1, recording the costs observed and
+whether the pragmatic variant would fit better.
+
+## 011 — Use-case boundary models and mapping
+**Date:** 2026-09-28
+**Status:** Accepted
+
+**Decision:** Use cases take commands and return dedicated result models, both defined in
+`port.in`. Mapping from domain to result models is hand-written in the application layer.
+Adapters (web, persistence) use MapStruct for their mappings, with
+`unmappedTargetPolicy=ERROR` so an unmapped target property fails the build.
+
+**Alternatives considered:** return domain types from use cases (fewer models, but
+controllers would depend on `domain`, contradicting decision 010's rule that controllers
+depend only on `port.in`); hand-written mappers everywhere (no generated code, but more
+boilerplate in adapters where mappings are mostly one-to-one); MapStruct in the
+application layer (rejected: its generated code and annotations would add a framework
+dependency to the application layer, violating decision 010).
+
+**Consequences:** Each use case has one extra mapping (domain → result model) compared
+with returning domain types; this cost is recorded for the end-of-Phase-1 review of
+decision 010. Generated adapter mappers are Spring components
+(`mapstruct.defaultComponentModel=spring`). Decision 010 is amended: `port.in` commands
+and results are added to its list of per-layer models.
+
+## 012 — Nullability: JSpecify in all layers
+**Date:** 2026-09-28
+**Status:** Accepted
+
+**Decision:** JSpecify annotations (`@NullMarked`, `@Nullable` from
+`org.jspecify.annotations`) may be used in every layer, including `domain` and
+`application`. JSpecify is declared as a direct dependency, with the version managed by
+Spring Boot.
+
+**Alternatives considered:** no nullability annotations in `domain` and `application`
+(keeps the core strictly `java.*`-only, but leaves null contracts undocumented where the
+rules live); nullability by convention only (e.g. `Optional` for absent return values,
+no annotations; nothing a tool can check).
+
+**Consequences:** Decision 010 is amended: `domain` and `application` may also depend on
+`org.jspecify.annotations`, and the ArchUnit rules allow that package and no other
+non-`java.*` dependency. The annotations carry no runtime behaviour, so the core stays
+framework-free; they match the null-safety annotations Spring Framework 7 uses. No
+static null checker (e.g. NullAway) is adopted yet.
