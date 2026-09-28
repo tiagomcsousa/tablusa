@@ -169,7 +169,7 @@ statements executed, to catch N+1 problems that would not be visible in a code r
 
 ## 010 — Architecture: strict Clean Architecture (ports and adapters)
 **Date:** 2026-09-27
-**Status:** Accepted (amended by 011 and 012)
+**Status:** Accepted (amended by 011 and 012 and 013)
 
 **Decision:** The backend applies Clean Architecture uniformly, implemented as ports and
 adapters and organised by feature (e.g. `song/`), each with `domain`, `application`
@@ -195,6 +195,7 @@ Dependency rules are enforced by ArchUnit tests in the build: `domain` depends o
 `jakarta.persistence` appears only in the persistence adapter; controllers depend only
 on `port.in`. To be revisited at the end of Phase 1, recording the costs observed and
 whether the pragmatic variant would fit better.
+chord semantics (chord-name parsing, key-relative chord representation) are domain
 
 ## 011 — Use-case boundary models and mapping
 **Date:** 2026-09-28
@@ -237,3 +238,32 @@ no annotations; nothing a tool can check).
 non-`java.*` dependency. The annotations carry no runtime behaviour, so the core stays
 framework-free; they match the null-safety annotations Spring Framework 7 uses. No
 static null checker (e.g. NullAway) is adopted yet.
+
+## 013 — Chord representation: semitone offset relative to the song's key
+**Date:** 2026-09-28
+**Status:** Accepted
+
+**Decision:** A chord is stored as a semitone offset (0–11) from the root of the song's
+key, plus quality, extensions and an optional bass note (also an offset). Spelling is
+not stored: it is derived at render time from the target key. `{key:}` is mandatory in
+ChordPro input and files without it are rejected. Transposition and capo are rendering
+concerns; no transposed state is persisted.
+
+Spelling rule: use the key signature of the target key (flats for flat keys, sharps for
+sharp keys). If the target key would need more than six accidentals, render its
+enharmonic equivalent instead.
+
+**Alternatives considered:** diatonic degree plus alteration (preserves the author's
+intent and enables harmonic analysis and chord simplification, but needs normalisation
+rules for non-diatonic chords and makes chord equality non-trivial); semitone offset
+plus an optional spelling hint (preserves intent, but two fields that can disagree and
+an arbitration rule to define).
+
+**Consequences:** Transposition is arithmetic modulo 12 and directly expressible as
+properties (+n then −n is the identity; +12 is the identity). The original spelling of
+the input file is lost. Chord-name parsing and the key-relative mapping are domain
+concerns (decision 010), not parser concerns. Song documents carry a schemaVersion
+(decision 006), so adding degrees or a spelling hint later is an additive change. The
+UI shows the original key and all transposition is relative to it. Decision 010 is
+amended: chord semantics are described as key-relative chord representation, not
+key-relative degrees.

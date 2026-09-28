@@ -51,5 +51,6 @@ In PowerShell use `.\mvnw.cmd` with the same arguments.
 - Integration tests use real PostgreSQL via Testcontainers (`@Import(TestcontainersConfiguration.class)`, `@ServiceConnection`). No H2, HSQLDB or other in-memory substitutes.
 - Integration tests are named `*IT`.
 - Domain and application tests are plain JUnit; no Spring context.
+- Architecture rules (decision 010) live in `ArchitectureTest`; bytecode-checkable idioms in `CodingConventionsTest`. Both run with `./mvnw test`. If a rule fails oddly, run `./mvnw clean test`: the IDE's compiler can overwrite `target/classes`.
 - The ChordPro parser and chord-degree conversion need property-based tests: parse → serialise round-trip; chord name → key-relative degree → chord name in the same key returns the original, including spelling (Bb vs A#).
 - The property-based testing library is pending: jqwik, named in decision 007, does not run on the JUnit Platform version Spring Boot manages. Do not add a PBT dependency or override JUnit versions; stop and ask.
