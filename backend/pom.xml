@@ -29,6 +29,7 @@
 	<properties>
 		<java.version>25</java.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
+		<archunit.version>1.5.1</archunit.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -112,6 +113,12 @@
 			<artifactId>testcontainers-postgresql</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>com.tngtech.archunit</groupId>
+			<artifactId>archunit-junit5</artifactId>
+			<version>${archunit.version}</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -129,6 +136,7 @@
 					</annotationProcessorPaths>
 					<compilerArgs>
 						<arg>-Amapstruct.defaultComponentModel=spring</arg>
+						<arg>-Amapstruct.defaultInjectionStrategy=constructor</arg>
 						<arg>-Amapstruct.unmappedTargetPolicy=ERROR</arg>
 					</compilerArgs>
 				</configuration>
